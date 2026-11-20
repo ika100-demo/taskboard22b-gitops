@@ -214,6 +214,7 @@ spec:
   - list:
       elements:
       - name: postgres
+      - name: postgres-backups
   template:
     metadata:
       name: addon-{{name}}-prod
@@ -232,3 +233,9 @@ spec:
           selfHeal: true
         syncOptions:
         - CreateNamespace=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
