@@ -3,55 +3,105 @@ plan_id: 001-persistent-tasks-in-postgres-with-a-web
 spec: 001-persistent-tasks-in-postgres-with-a-web
 feature: Persistent tasks in Postgres with a web UI to list and create them
 gitops_app: ika100-demo/taskboard22b-gitops
-status: draft
+status: completed
 repos:
-  - id: taskboard22b-gitops
-    shape: gitops-app
-    summary: Postgres database for the Task API, 2 Task API instances in dev, web UI wired to the Task API
-    acs: [AC-001.1, AC-001.2, AC-001.3, AC-001.4]
-    order: before-merge
-    gitops:
-      - {resource: postgres, type: database}
-      - {uses: postgres, component: taskboard22b-api}
-      - {replicas: 2, component: taskboard22b-api, instance: dev}
-      - {env: {TASK_API_URL: 'http://taskboard22b-api'}, component: taskboard22b-web}
-    depends_on: []
-    done: false
-  - id: taskboard22b-api
-    shape: service-python
-    summary: Persistent tasks in Postgres
-    acs: [AC-001.1, AC-001.2, AC-001.6, AC-001.8]
-    criteria:
-      - "Given tasks were created through `POST /tasks` and the database is reachable through `DATABASE_URL`, when the service is restarted (a new process against the same database), then `GET /tasks` returns `200` with every one of those tasks, each with the same `id`, `title`, `due_date` and `created_at` it was created with, ordered by creation time oldest first (system AC-001.1) (replaces AC-001.6)"
-      - "Given an empty database without the service's tables, when the service starts, then it creates its schema itself and `GET /tasks` returns `200` with `[]` (system AC-001.1)"
-      - "Given two instances of the service use the same database, when a task is created through `POST /tasks` on one instance, then `GET /tasks` on the other instance contains that task with the same `id`, `title`, `due_date` and `created_at` (system AC-001.2)"
-      - "Given the database holds 10,000 tasks, when clients send valid `POST /tasks` requests, also concurrently through two instances, then each answers `507` with `{\"detail\": \"Task limit of 10000 reached\"}` and the task count stays at 10,000 (system AC-001.8, AC-001.2)"
-      - "Given the database is unreachable, when a client sends `GET /tasks` or a valid `POST /tasks`, then the service answers `503` with `{\"detail\": \"Tasks are temporarily unavailable\"}` within 6 seconds, no task is created, and `GET /ready` answers `503` while `GET /health` stays `200` (system AC-001.6)"
-      - "Given the database was unreachable and becomes reachable again, when a client sends `GET /ready`, `GET /tasks` and a valid `POST /tasks`, then they answer `200`, `200` and `201` without a restart of the service (system AC-001.6)"
-    arguments: |
-      Withdraw assumption A8 of docs/specs/001-create-and-list-tasks-in-memory (one instance, each holding its own tasks): tasks now live in the shared Postgres database.
-      Connection comes from DATABASE_URL (and PG*), injected by the gitops entry; never a default credential in code.
-      The request/response contract of spec 001 (fields, 422 body, 201, 507, ordering) stays unchanged; only the 503 and /ready behaviour are new.
-      Ordering oldest first must stay stable for equal created_at (insertion order, e.g. a sequence column).
-    depends_on: []
-    done: false
-  - id: taskboard22b-web
-    shape: web-nextjs
-    summary: Task list and create form on the start page
-    acs: [AC-001.3, AC-001.4, AC-001.5, AC-001.7, AC-001.8]
-    criteria:
-      - "Given the Task API's `GET /tasks` returns tasks, when a user opens the start page `/`, then the page lists every returned task in the order the Task API returned it (oldest first), each showing its `title` and its `due_date` as `YYYY-MM-DD`, or the text \"No due date\" when `due_date` is `null`; given `GET /tasks` returns `[]`, the page shows the text \"No tasks yet\" (system AC-001.3)"
-      - "Given the start page is open, when the user enters the title \"Buy milk\", picks the due date 2026-12-24 in the date field and submits the create form, then the web sends `POST /tasks` with `{\"title\": \"Buy milk\", \"due_date\": \"2026-12-24\"}` to the Task API at `TASK_API_URL`, and on `201` the returned task appears at the end of the list without a page reload and the form is emptied (system AC-001.4)"
-      - "Given the start page is open, when the user submits a valid title without picking a due date, then the web sends `due_date` `null` and on `201` the new task appears in the list with the text \"No due date\" (system AC-001.4, AC-001.3)"
-      - "Given the start page is open, when the user submits the create form with an empty title, a title of only whitespace, or a title longer than 200 characters after trimming, then the page shows \"Title must be 1 to 200 characters\" next to the title field, keeps the entered values and sends no `POST /tasks`; a title of 1 or 200 characters after trimming is sent trimmed, and a `422` from the Task API naming `title` shows the same message (system AC-001.5)"
-      - "Given the Task API is unreachable, does not answer `GET /tasks` within 5 seconds, or answers `503` or any status the contract does not list, when a user opens the start page, then the page shows \"Tasks cannot be loaded right now. Please try again later.\" instead of the list (system AC-001.7)"
-      - "Given the start page is open, when the user submits a valid task and the Task API is unreachable, does not answer within 5 seconds, or answers `503` or any status the contract does not list, then the page shows \"The task could not be saved. Please try again.\", keeps the entered values and leaves the list unchanged (system AC-001.7)"
-      - "Given the start page is open, when the user submits a valid task and the Task API answers `POST /tasks` with `507`, then the page shows \"The task limit of 10,000 is reached.\", keeps the entered values and leaves the list unchanged (system AC-001.8)"
-    arguments: |
-      The Task API is called from the Next.js server (server component for the list, a server action or route handler for create), never from the browser, so TASK_API_URL can stay cluster-internal and no CORS is needed.
-      The page text is English; the start page `/` is the task page.
-    depends_on: []
-    done: false
+- id: taskboard22b-gitops
+  shape: gitops-app
+  summary: Postgres database for the Task API, 2 Task API instances in dev, web UI wired to the Task API
+  acs:
+  - AC-001.1
+  - AC-001.2
+  - AC-001.3
+  - AC-001.4
+  order: before-merge
+  gitops:
+  - resource: postgres
+    type: database
+  - uses: postgres
+    component: taskboard22b-api
+  - replicas: 2
+    component: taskboard22b-api
+    instance: dev
+  - env:
+      TASK_API_URL: http://taskboard22b-api
+    component: taskboard22b-web
+  depends_on: []
+  done: true
+- id: taskboard22b-api
+  shape: service-python
+  summary: Persistent tasks in Postgres
+  acs:
+  - AC-001.1
+  - AC-001.2
+  - AC-001.6
+  - AC-001.8
+  criteria:
+  - Given tasks were created through `POST /tasks` and the database is reachable through `DATABASE_URL`,
+    when the service is restarted (a new process against the same database), then `GET /tasks` returns
+    `200` with every one of those tasks, each with the same `id`, `title`, `due_date` and `created_at`
+    it was created with, ordered by creation time oldest first (system AC-001.1) (replaces AC-001.6)
+  - Given an empty database without the service's tables, when the service starts, then it creates its
+    schema itself and `GET /tasks` returns `200` with `[]` (system AC-001.1)
+  - Given two instances of the service use the same database, when a task is created through `POST /tasks`
+    on one instance, then `GET /tasks` on the other instance contains that task with the same `id`, `title`,
+    `due_date` and `created_at` (system AC-001.2)
+  - 'Given the database holds 10,000 tasks, when clients send valid `POST /tasks` requests, also concurrently
+    through two instances, then each answers `507` with `{"detail": "Task limit of 10000 reached"}` and
+    the task count stays at 10,000 (system AC-001.8, AC-001.2)'
+  - 'Given the database is unreachable, when a client sends `GET /tasks` or a valid `POST /tasks`, then
+    the service answers `503` with `{"detail": "Tasks are temporarily unavailable"}` within 6 seconds,
+    no task is created, and `GET /ready` answers `503` while `GET /health` stays `200` (system AC-001.6)'
+  - Given the database was unreachable and becomes reachable again, when a client sends `GET /ready`,
+    `GET /tasks` and a valid `POST /tasks`, then they answer `200`, `200` and `201` without a restart
+    of the service (system AC-001.6)
+  arguments: |
+    Withdraw assumption A8 of docs/specs/001-create-and-list-tasks-in-memory (one instance, each holding its own tasks): tasks now live in the shared Postgres database.
+    Connection comes from DATABASE_URL (and PG*), injected by the gitops entry; never a default credential in code.
+    The request/response contract of spec 001 (fields, 422 body, 201, 507, ordering) stays unchanged; only the 503 and /ready behaviour are new.
+    Ordering oldest first must stay stable for equal created_at (insertion order, e.g. a sequence column).
+  depends_on: []
+  done: true
+- id: taskboard22b-web
+  shape: web-nextjs
+  summary: Task list and create form on the start page
+  acs:
+  - AC-001.3
+  - AC-001.4
+  - AC-001.5
+  - AC-001.7
+  - AC-001.8
+  criteria:
+  - Given the Task API's `GET /tasks` returns tasks, when a user opens the start page `/`, then the page
+    lists every returned task in the order the Task API returned it (oldest first), each showing its `title`
+    and its `due_date` as `YYYY-MM-DD`, or the text "No due date" when `due_date` is `null`; given `GET
+    /tasks` returns `[]`, the page shows the text "No tasks yet" (system AC-001.3)
+  - 'Given the start page is open, when the user enters the title "Buy milk", picks the due date 2026-12-24
+    in the date field and submits the create form, then the web sends `POST /tasks` with `{"title": "Buy
+    milk", "due_date": "2026-12-24"}` to the Task API at `TASK_API_URL`, and on `201` the returned task
+    appears at the end of the list without a page reload and the form is emptied (system AC-001.4)'
+  - Given the start page is open, when the user submits a valid title without picking a due date, then
+    the web sends `due_date` `null` and on `201` the new task appears in the list with the text "No due
+    date" (system AC-001.4, AC-001.3)
+  - Given the start page is open, when the user submits the create form with an empty title, a title of
+    only whitespace, or a title longer than 200 characters after trimming, then the page shows "Title
+    must be 1 to 200 characters" next to the title field, keeps the entered values and sends no `POST
+    /tasks`; a title of 1 or 200 characters after trimming is sent trimmed, and a `422` from the Task
+    API naming `title` shows the same message (system AC-001.5)
+  - Given the Task API is unreachable, does not answer `GET /tasks` within 5 seconds, or answers `503`
+    or any status the contract does not list, when a user opens the start page, then the page shows "Tasks
+    cannot be loaded right now. Please try again later." instead of the list (system AC-001.7)
+  - Given the start page is open, when the user submits a valid task and the Task API is unreachable,
+    does not answer within 5 seconds, or answers `503` or any status the contract does not list, then
+    the page shows "The task could not be saved. Please try again.", keeps the entered values and leaves
+    the list unchanged (system AC-001.7)
+  - Given the start page is open, when the user submits a valid task and the Task API answers `POST /tasks`
+    with `507`, then the page shows "The task limit of 10,000 is reached.", keeps the entered values and
+    leaves the list unchanged (system AC-001.8)
+  arguments: |
+    The Task API is called from the Next.js server (server component for the list, a server action or route handler for create), never from the browser, so TASK_API_URL can stay cluster-internal and no CORS is needed.
+    The page text is English; the start page `/` is the task page.
+  depends_on: []
+  done: true
 gitops_pin: []
 ---
 
