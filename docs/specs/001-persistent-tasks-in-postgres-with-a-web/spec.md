@@ -38,7 +38,8 @@ As a taskboard user, I want to create a task with a title and an optional due da
 
 - Updating, completing or deleting tasks; showing a single task on its own page.
 - Filtering, searching, sorting options or paging the list.
-- Users, login, ownership or per-user task lists.
+- Users, login, ownership or per-user task lists: create and list stay open to anyone who reaches the system in this version; login is a later spec, due before prod exposure.
+- Storing personal or confidential data in tasks.
 - Live updates of the list when another user creates a task (a reload shows them).
 - Carrying over tasks held in memory by the currently running Task API.
 - Backups and restore of the task database (a later spec).
@@ -55,10 +56,11 @@ As a taskboard user, I want to create a task with a title and an optional due da
 - **A7** The database being down answers `503` and makes the Task API not ready, and the Task API reconnects by itself (other option: `500`, or the process exits and restarts; affects AC-001.6).
 - **A8** The start page `/` is the task page; due dates are shown as `YYYY-MM-DD`, and the page text is English (other option: a separate `/tasks` page, localised dates; affects AC-001.3, AC-001.4).
 - **A9** The feature runs in every environment the components run in (today dev; staging and prod when promoted), and each environment has its own database (other option: none; affects AC-001.1, AC-001.2).
+- **A10** Listing and creating tasks, in the web UI and on the Task API, stay open to anyone who can reach the system, with no login in this version; tasks must hold no personal or confidential data, and login comes in a later spec before prod exposure (other option: a login or an API key now; affects AC-001.3, AC-001.4). Answered by the user 2026-11-20.
 
 ## Open questions
 
-- Tasks are now kept permanently and the web UI is exposed without login, so anyone who reaches the web UI or the Task API can read and create tasks. Does that stay open, as decided for the in-memory version? (suggested: yes, no login in this version, tasks must hold no personal or confidential data; a later spec adds login before prod exposure; affects AC-001.3, AC-001.4, new criterion)
+- ~~Tasks are now kept permanently and the web UI is exposed without login, so anyone who reaches the web UI or the Task API can read and create tasks. Does that stay open, as decided for the in-memory version? (suggested: yes, no login in this version, tasks must hold no personal or confidential data; a later spec adds login before prod exposure; affects AC-001.3, AC-001.4, new criterion)~~ Answered 2026-11-20: yes, open; see A10 and Non-goals.
 
 <!-- Priority levels (spec 196) for the product-manager's PRIORITY line: P0 an outage, data loss, a security problem, or something that blocks all other work; P1 a normal bug or feature; the fallback when nothing signals urgency; P2 cosmetic, a convenience, or something with an easy workaround. A reason is "P<n>: <phrase>", one of: P0: outage, data loss, security problem, blocks all other work; P1: normal bug or feature; P2: cosmetic, convenience, easy workaround. -->
 
@@ -66,3 +68,4 @@ As a taskboard user, I want to create a task with a title and an optional due da
 
 - 2026-11-20 created
 - 2026-11-20 priority P1 proposed: P1: normal bug or feature
+- 2026-11-20 amended: open question on access answered (open, no login, no personal or confidential data), recorded as A10 and in the non-goals
